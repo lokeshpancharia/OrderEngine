@@ -1,9 +1,10 @@
 #pragma once
-
 #include <string>
 #include <vector>
 #include <unordered_map>
 #include <map>
+#include <mutex>
+#include <shared_mutex>
 
 class Order
 {
@@ -77,34 +78,27 @@ class OrderCacheInterface
 
 };
 
-// Todo: Your implementation of the OrderCache...
 class OrderCache : public OrderCacheInterface
 {
+public:
+    void addOrder(Order order) override;
+    void cancelOrder(const std::string& orderId) override;
+    void cancelOrdersForUser(const std::string& user) override;
+    void cancelOrdersForSecIdWithMinimumQty(const std::string& securityId, unsigned int minQty) override;
+    unsigned int getMatchingSizeForSecurity(const std::string& securityId) override;
+    std::vector<Order> getAllOrders() const override;
 
- public:
+private:
+    // Mutexes for each shared resource
+    mutable std::shared_mutex secIdMutex;
+    mutable std::shared_mutex orderIdMutex;
+    mutable std::shared_mutex userMutex;
 
-  void addOrder(Order order) override;
-
-  void cancelOrder(const std::string& orderId) override;
-
-  void cancelOrdersForUser(const std::string& user) override;
-
-  void cancelOrdersForSecIdWithMinimumQty(const std::string& securityId, unsigned int minQty) override;
-
-  unsigned int getMatchingSizeForSecurity(const std::string& securityId) override;
-
-  std::vector<Order> getAllOrders() const override;
-
- private:
-
-   // Todo...
-
-  std::multimap<std::string, Order> ordersBySecId;  // Maps securityId -> Order
-  std::unordered_map<std::string, std::multimap<std::string, Order>::iterator> ordersById;  // Maps orderId -> iterator in ordersBySecId
+    // Data structures holding orders
+    std::multimap<std::string, Order> ordersBySecId;  // Maps securityId -> Order
+    std::unordered_map<std::string, std::multimap<std::string, Order>::iterator> ordersById;  // Maps orderId -> iterator in ordersBySecId
     std::unordered_map<std::string, std::vector<std::multimap<std::string, Order>::iterator>> ordersByUser;  // Maps user -> list of order iterators
 
     // Helper method to remove an order from the user map
-  void removeOrderFromUserMap(const std::string& user, std::multimap<std::string, Order>::iterator orderIt);
-
-
+    void removeOrderFromUserMap(const std::string& user, std::multimap<std::string, Order>::iterator orderIt);
 };
